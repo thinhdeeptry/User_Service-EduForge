@@ -6,10 +6,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
-  imports: [UsersModule, ConfigModule.forRoot({
-    //không cần import ConfigModule.forRoot() trong UsersModule vì nó đã được import ở AppModule
-    isGlobal: true
-  }),
+  imports: [UsersModule, 
+    ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
