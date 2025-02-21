@@ -5,37 +5,27 @@ export type UserDocument = HydratedDocument<User>;
 
 @Schema({ timestamps: true })
 export class User {
-    @Prop()
+    @Prop({ required: true })
     name: string;
-
-    @Prop()
+    @Prop({ required: true })
     email: string;
-
-    @Prop()
+    @Prop({ required: true })
     password: string;
-
-    @Prop()
+    @Prop({ required: false })
     phone: string;
-
-    @Prop()
+    @Prop({ required: false })
     address: string;
-
-    @Prop()
+    @Prop({ required: false })
     image: string;
-
-    @Prop()
+    @Prop({ default: "USER" })
     role: string;
-
-    @Prop()
+    @Prop({ default: "LOCAL" })
     accountType: string;
-
-    @Prop()
-    isActive: string;
-
-    @Prop()
+    @Prop({ default: false })
+    isActive: boolean;
+    @Prop({ required: false })
     codeId: string;
-
-    @Prop()
+    @Prop({ required: false })
     codeExpired: Date;
 
 }
