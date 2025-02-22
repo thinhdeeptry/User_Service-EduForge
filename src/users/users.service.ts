@@ -60,7 +60,9 @@ export class UsersService {
   findOne(id: number) {
     return `This action returns a #${id} user`;
   }
-
+  async findByEmail (email: string) {
+    return await this.userModel.findOne({ email })
+  }
   async update( updateUserDto: UpdateUserDto) {
     return await this.userModel.updateOne(
       {_id: updateUserDto._id}
@@ -68,7 +70,7 @@ export class UsersService {
     );
   }
 
-  async remove(_id: string) {
+   async remove(_id: string) {
     //check id
     if (!mongoose.isValidObjectId(_id)) {
       throw new BadRequestException("Id không hợp lệ");
