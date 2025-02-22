@@ -6,6 +6,7 @@ import { User } from './schemas/user.schema';
 import {Model} from 'mongoose';
 import { hashPasswordHelper } from 'src/helpers/util';
 import aqp from 'api-query-params';
+import mongoose from 'mongoose'; 
 @Injectable()
 export class UsersService {
   constructor(@InjectModel(User.name) 
@@ -67,7 +68,17 @@ export class UsersService {
     );
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async remove(_id: string) {
+    //check id
+    if (!mongoose.isValidObjectId(_id)) {
+      throw new BadRequestException("Id không hợp lệ");
+    }
+
+    const foundUser = await this.userModel.findById(_id);
+    if (!foundUser) {
+      throw new BadRequestException("Không tìm thấy người dùng");
+    }
+
+    return this.userModel.deleteOne({_id});
   }
 }
