@@ -7,6 +7,10 @@ import {Model} from 'mongoose';
 import { hashPasswordHelper } from 'src/helpers/util';
 import aqp from 'api-query-params';
 import mongoose from 'mongoose'; 
+import { CreateAuthDto } from 'src/auth/dto/create-auth.dto';
+import { v4 as uuidv4 } from 'uuid';
+import dayjs from 'dayjs';
+
 @Injectable()
 export class UsersService {
   constructor(@InjectModel(User.name) 
@@ -82,5 +86,25 @@ export class UsersService {
     }
 
     return this.userModel.deleteOne({_id});
+  }
+
+  async handleRegister(register: CreateAuthDto){
+    const {name, email, password} = register;
+    //check email
+    const isEmailExit = await this.isEmailExit(email);
+    if(isEmailExit){
+      throw new BadRequestException(`Email ${email} đã tồn tại, vui lòng sử dụng email khác!`);
+    }
+    //hash password
+    const hashPassword = await hashPasswordHelper(password);
+    const user = await this.userModel.create({
+      name, email, password: hashPassword,
+      isActive:false,
+      codeId:uuidv4(),
+      codeExpired: dayjs().add(1, 'minutes')
+    });
+    return {
+      _id:user._id
+    };
   }
 }
