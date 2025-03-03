@@ -50,9 +50,9 @@ export class AuthController {
   }
   @Post('verify-otp')
   @Public()
-  async verifyOTP(@Body() body: { email: string; otp: string }) {
-    const { email, otp } = body;
-    const isValid = await this.authService.verifyOTP(email, otp);
+  async verifyOTP(@Body() body: { id: string; otp: string }) {
+    const { id, otp } = body;
+    const isValid = await this.authService.verifyOTP(id, otp);
     if (isValid) {
       return { message: 'Xác thực OTP thành công. Tài khoản đã được kích hoạt.' };
     }
@@ -61,8 +61,8 @@ export class AuthController {
 
   @Post('refresh-otp')
   @Public()
-  async refreshOTP(@Body('email') email: string) {
-    const { otp } = await this.authService.updateOTP(email);
-    return { message: `Mã OTP mới đã được gửi: ${otp}. Vui lòng kiểm tra email.` };
+  async refreshOTP(@Body('id') id: string) {
+     await this.authService.updateOTP(id);
+    return { message: `Mã OTP mới đã được gửi. Vui lòng kiểm tra email.` };
   }
 }

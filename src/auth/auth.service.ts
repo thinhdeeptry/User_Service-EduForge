@@ -60,7 +60,7 @@ export class AuthService {
     });
     //generate Secret Key+ OTP
     //send email
-    this.sendOTP(email);
+    this.sendOTP(user._id.toString());
     return {
       _id: user._id
     };
@@ -77,9 +77,9 @@ export class AuthService {
   }
 
   // Cập nhật OTP cho user
-  async updateOTP(email: string): Promise<{ otp: string; expiresAt: Date }> {
+  async updateOTP(id: string): Promise<{ otp: string; expiresAt: Date }> {
     try {
-      const user = await this.usersService.findByEmail(email);
+      const user = await this.usersService.findBy_id(id);
       if (!user) throw new BadRequestException('User not found');
       let secret = user.otpSecret;
       if (secret == null) {
@@ -99,22 +99,21 @@ export class AuthService {
       throw new InternalServerErrorException('Không thể cập nhật OTP. Vui lòng thử lại.');
     }
   }
-  async sendOTP(email: string): Promise<void> {
-    const { otp } = await this.updateOTP(email);
-    const expiresInMinutes = 5;
-    const user = await this.usersService.findByEmail(email);
+  async sendOTP(id: string): Promise<void> {
+    const { otp } = await this.updateOTP(id);
+    const user = await this.usersService.findBy_id(id);
     try {
       await this.mailerService.sendMail({
-        to: email,
+        to: user?.email,
         subject: 'Xác thực tài khoản Edu Forge',
         text: 'welcome',
         template: 'register.hbs',
         context: {
-          name: user?.name ?? email, // Có thể lấy từ user
+          name: user?.name ?? user?.email, // Có thể lấy từ user
           activationCode: otp
         },
       });
-      console.log(`Send email success to ${email}`);
+      console.log(`Send email success to ${user?.email}`);
 
     } catch (error) {
       console.error('Send email error:', error);
@@ -122,8 +121,8 @@ export class AuthService {
     }
   }
 
-  async verifyOTP(email: string, otp: string): Promise<boolean> {
-    const user = await this.usersService.findByEmail(email);
+  async verifyOTP(id: string, otp: string): Promise<boolean> {
+    const user = await this.usersService.findBy_id(id);
     if (!user || !user.otpSecret) throw new BadRequestException('OTP không hợp lệ hoặc user không tồn tại');
 
     authenticator.options = { digits: 6, step: 300 }; // Cấu hình lại để kiểm tra
