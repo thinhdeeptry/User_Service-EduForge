@@ -24,9 +24,11 @@ export class User {
     @Prop({ default: false })
     isActive: boolean;
     @Prop({ required: false })
-    codeId: string;
+    otpSecret?: string;
     @Prop({ required: false })
-    codeExpired: Date;
+    otp: string;
+    @Prop({ required: false })
+    otpExpiresAt: Date;
 
 }
 

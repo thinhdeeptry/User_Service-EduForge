@@ -16,4 +16,10 @@ export class UpdateUserDto  {
     address?: string;
     @IsOptional()
     image?: string;
+    @IsOptional()
+    otpSecret?: string;
+   @IsOptional()
+    otp: string;
+   @IsOptional()
+    otpExpiresAt: Date;
 }

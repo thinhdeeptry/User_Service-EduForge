@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { LocalAuthGuard } from './passport/local-auth.guard';
@@ -18,6 +18,8 @@ export class AuthController {
   @Public()
   @UseGuards(LocalAuthGuard)
   handleLogin(@Request() req) {
+    console.log("req.user", req.user);
+
     return this.authService.login(req.user);
   }
 
@@ -36,14 +38,31 @@ export class AuthController {
         to: 'thinhdz1500@gmail.com', // list of receivers
         subject: 'Testing Nest MailerModule ✔', // Subject line
         text: 'welcome', // plaintext body
-        template:"register.hbs",
-        context:{
-          name:"abc",
-          activationCode:123456789
+        template: "register.hbs",
+        context: {
+          name: "abc",
+          activationCode: 123456789
         }
       })
       .then(() => { })
       .catch(() => { });
     return "ok";
+  }
+  @Post('verify-otp')
+  @Public()
+  async verifyOTP(@Body() body: { email: string; otp: string }) {
+    const { email, otp } = body;
+    const isValid = await this.authService.verifyOTP(email, otp);
+    if (isValid) {
+      return { message: 'Xác thực OTP thành công. Tài khoản đã được kích hoạt.' };
+    }
+    throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+  }
+
+  @Post('refresh-otp')
+  @Public()
+  async refreshOTP(@Body('email') email: string) {
+    const { otp } = await this.authService.updateOTP(email);
+    return { message: `Mã OTP mới đã được gửi: ${otp}. Vui lòng kiểm tra email.` };
   }
 }

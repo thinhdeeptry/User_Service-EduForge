@@ -17,7 +17,12 @@ async function bootstrap() {
   }));
   //exclude: thay đổi đường dẫn mặc định của api
   app.setGlobalPrefix('api/v1',{ exclude: [''] });
-
+  app.enableCors({
+    origin: 'http://localhost:3000', 
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true, 
+    
+  });
   await app.listen(port);
 }
 bootstrap();

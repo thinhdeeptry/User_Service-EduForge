@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -8,16 +8,12 @@ import { hashPasswordHelper } from 'src/helpers/util';
 import aqp from 'api-query-params';
 import mongoose from 'mongoose';
 import { CreateAuthDto } from 'src/auth/dto/create-auth.dto';
-import { v4 as uuidv4 } from 'uuid';
-import dayjs from 'dayjs';
-import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectModel(User.name)
-    private userModel: Model<User>,
-    private readonly mailerService: MailerService
+    private userModel: Model<User>
 
   ) { }
 
@@ -31,7 +27,7 @@ export class UsersService {
   }
   async create(createUserDto: CreateUserDto) {
     const hashPassword = await hashPasswordHelper(createUserDto.password);
-    const { name, email, password, phone, address, image } = createUserDto;
+    const { name, email, phone, address, image } = createUserDto;
     const isEmailExit = await this.isEmailExit(email);
     if (isEmailExit) {
       throw new BadRequestException(`Email ${email} đã tồn tại, vui lòng sử dụng email khác!`);
@@ -92,39 +88,23 @@ export class UsersService {
 
     return this.userModel.deleteOne({ _id });
   }
-
-  async handleRegister(register: CreateAuthDto) {
-    const { name, email, password } = register;
-    //check email
-    const isEmailExit = await this.isEmailExit(email);
-    if (isEmailExit) {
-      throw new BadRequestException(`Email ${email} đã tồn tại, vui lòng sử dụng email khác!`);
-    }
-    //hash password
-    const hashPassword = await hashPasswordHelper(password);
-    const codeId = uuidv4();
-    const user = await this.userModel.create({
-      name, email, password: hashPassword,
-      isActive: false,
-      codeId: codeId ,
-      codeExpired: dayjs().add(5, 'minutes')
+  async updateOTP(userId: string, secret: string, otp: string, expiresAt: Date) {
+    await this.userModel.updateOne({ _id:userId }, {
+      otpSecret: secret,
+      otp: otp,
+      otpExpiresAt: expiresAt
     });
+  }
 
-    //send mail
-    this.mailerService.sendMail({
-      to: user.email, // list of receivers
-      subject: 'Activate your account at Edu Forge', // Subject line
-      text: 'welcome', // plaintext body
-      template: "register.hbs",
-      context: {
-        name: user?.name?? user.email,
-        activationCode: codeId
-      }
-    })
-      .then(() => { })
-      .catch(() => { });
-    return {
-      _id: user._id
-    };
+  async clearOTP(userId: string) {
+    await this.userModel.updateOne({ _id:userId }, {
+      otpSecret: null,
+      otp: null,
+      otpExpiresAt: null
+    });
+  }
+
+  async updateIsActive(userId: string, isActive: boolean) {
+    await this.userModel.updateOne({_id: userId }, { isActive });
   }
 }
