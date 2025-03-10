@@ -4,7 +4,7 @@ import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../../decorator/customAnotation';
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
+export class JwtAuthGuard extends AuthGuard('jwt') {// kế thường jwt liên kết với jwt trategy
 
   constructor(private reflector: Reflector) {
     super();

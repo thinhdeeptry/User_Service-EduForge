@@ -17,7 +17,7 @@ export class User {
     address: string;
     @Prop({ required: false })
     image: string;
-    @Prop({ default: "USER" })
+    @Prop({ default: "USER",enum: ['ADMIN', 'USER'] })
     role: string;
     @Prop({ default: "LOCAL" })
     accountType: string;

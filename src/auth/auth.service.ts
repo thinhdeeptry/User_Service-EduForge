@@ -5,18 +5,23 @@ import { comparePasswordHelper, hashPasswordHelper } from 'src/helpers/util';
 import { UsersService } from 'src/modules/users/users.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { authenticator } from 'otplib';
-import { MailerService } from '@nestjs-modules/mailer';
+import fs from 'fs';
+import handlebars from 'handlebars';
+import { Resend } from 'resend';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    private readonly mailerService: MailerService,
+    private configService: ConfigService,
   ) { }
 
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(username);
+    console.log(user);
+    
     if (!user) {
       throw new UnauthorizedException("Email hoặc password không hợp lệ");
     }
@@ -39,7 +44,11 @@ export class AuthService {
         id: user._id,
         email: user.email,
         name: user.name,
-
+        image: user.image,
+        phone: user.phone,
+        address: user.adress,
+        role: user.role,
+        accountType: user.accountType,
       },
       access_token: this.jwtService.sign(payload),
     };
@@ -103,18 +112,26 @@ export class AuthService {
     const { otp } = await this.updateOTP(id);
     const user = await this.usersService.findBy_id(id);
     try {
-      await this.mailerService.sendMail({
-        to: user?.email,
-        subject: 'Xác thực tài khoản Edu Forge',
-        text: 'welcome',
-        template: 'register.hbs',
-        context: {
-          name: user?.name ?? user?.email, // Có thể lấy từ user
-          activationCode: otp
-        },
+      const resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+      const template = await fs.promises.readFile('src/mail/templates/register.hbs', 'utf8');
+      const compiledTemplate = handlebars.compile(template);
+      const html = compiledTemplate({
+        name: user?.name ?? user?.email,
+        activationCode: otp
       });
-      console.log(`Send email success to ${user?.email}`);
+      const { data, error } = await resend.emails.send({
+        from: 'EduForge<auth@eduforge.io.vn>',
+        to: user?.email ? [user.email] : [],
+        subject: 'Account Activation - EduForge',
+        html: html
+      });
 
+      if (error) {
+        console.error({ error });
+        throw new InternalServerErrorException('Failed to send email');
+      }
+
+      console.log(`Send email success to ${user?.email}`);
     } catch (error) {
       console.error('Send email error:', error);
       throw new InternalServerErrorException('Không thể gửi mã OTP. Vui lòng thử lại.');
