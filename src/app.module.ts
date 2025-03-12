@@ -9,6 +9,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/passport/jwt-auth.guard';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [UsersModule,
@@ -21,6 +22,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
       }),
       inject: [ConfigService],
     }),
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

@@ -38,7 +38,7 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { username: user.email, sub: user._id };
+    const payload = { username: user.email, sub: user._id, role: user.role };
     return {
       user: {
         id: user._id,
@@ -61,11 +61,9 @@ export class AuthService {
     if (isEmailExit) {
       throw new BadRequestException(`Email ${email} đã tồn tại, vui lòng sử dụng email khác!`);
     }
-    //hash password
-    const hashPassword = await hashPasswordHelper(password);
     //create user
     const user = await this.usersService.create({
-      name, email, password: hashPassword
+      name, email, password
     });
     //generate Secret Key+ OTP
     //send email

@@ -38,28 +38,17 @@ export class UsersService {
     return { _id: user._id };
   }
 
-  async findAll(query: string, current: number, pageSize: number) {
-    const { filter, sort } = aqp(query);
-
-    if (filter.current) delete filter.current;
-    if (filter.pageSize) delete filter.pageSize;
-
-    if (!current) current = 1;
-    if (!pageSize) pageSize = 10;
-
-    const totalItems = (await this.userModel.find(filter)).length
-    const totalPages = Math.ceil(totalItems / pageSize);
-
-    const skip = (current - 1) * pageSize;
-
-
-    const results = await this.userModel
+  async findMany(filter: any, skip: number, limit: number) {
+    return this.userModel
       .find(filter)
-      .limit(pageSize)
       .skip(skip)
-      .select('-password')
-      .sort(sort as any);
-    return { results, totalItems, totalPages, current, pageSize };
+      .limit(limit)
+      .select('-password -otpSecret') // Loại bỏ dữ liệu nhạy cảm
+      .exec();
+  }
+
+  async count(filter: any) {
+    return this.userModel.countDocuments(filter).exec();
   }
 
   findOne(id: number) {
@@ -92,7 +81,7 @@ export class UsersService {
     return this.userModel.deleteOne({ _id });
   }
   async updateOTP(userId: string, secret: string, otp: string, expiresAt: Date) {
-    await this.userModel.updateOne({ _id:userId }, {
+    await this.userModel.updateOne({ _id: userId }, {
       otpSecret: secret,
       otp: otp,
       otpExpiresAt: expiresAt
@@ -100,7 +89,7 @@ export class UsersService {
   }
 
   async clearOTP(userId: string) {
-    await this.userModel.updateOne({ _id:userId }, {
+    await this.userModel.updateOne({ _id: userId }, {
       otpSecret: null,
       otp: null,
       otpExpiresAt: null
@@ -108,6 +97,6 @@ export class UsersService {
   }
 
   async updateIsActive(userId: string, isActive: boolean) {
-    await this.userModel.updateOne({_id: userId }, { isActive });
+    await this.userModel.updateOne({ _id: userId }, { isActive });
   }
 }

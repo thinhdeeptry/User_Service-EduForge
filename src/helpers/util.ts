@@ -8,10 +8,18 @@ export const hashPasswordHelper = async (plainPassword: string) => {
         console.error(err);
     }
 }
-export const comparePasswordHelper = async (plainPassword: string, hashPassword: string) => {
+export const comparePasswordHelper = async (plainPassword: string, hashPassword: string): Promise<boolean> => {
+    if (!plainPassword || typeof plainPassword !== 'string') {
+        throw new Error('Mật khẩu phải là một chuỗi không rỗng');
+    }
+    if (!hashPassword || typeof hashPassword !== 'string') {
+        throw new Error('Mật khẩu đã mã hóa phải là một chuỗi không rỗng');
+    }
+
     try {
         return await bcrypt.compare(plainPassword, hashPassword);
     } catch (err) {
-        console.error(err);
+        console.error('Lỗi khi so sánh mật khẩu:', err);
+        throw new Error('Không thể so sánh mật khẩu. Vui lòng kiểm tra dữ liệu đầu vào.');
     }
-}
+};

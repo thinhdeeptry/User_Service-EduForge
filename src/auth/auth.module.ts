@@ -8,6 +8,8 @@ import { PassportModule } from '@nestjs/passport';
 import { LocalStrategy } from './passport/local.strategy';
 import { JwtStrategy } from './passport/jwt.strategy';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { APP_GUARD } from '@nestjs/core';
+import { RolesGuard } from './RolesGuard';
 
 @Module({
   imports:[
@@ -26,6 +28,14 @@ import { MailerModule } from '@nestjs-modules/mailer';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy ],
+  providers: [
+    AuthService,
+    {
+    provide: APP_GUARD,
+    useClass: RolesGuard, // Áp dụng RolesGuard toàn cục
+  }, 
+  LocalStrategy, 
+  JwtStrategy, 
+],
 })
 export class AuthModule {}

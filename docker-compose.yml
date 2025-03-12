@@ -12,4 +12,4 @@ services:
 volumes:
   mongodb_data_container:
 
-    # docker compose -p hoidanit-mongodb-4rn up -d
+    # docker compose -p mongodb_user-service_edu-force up -d

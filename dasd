@@ -1,0 +1,20 @@
+[33mceeedc8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/register[m[33m)[m change mailer to resend
+[33mdafbea1[m[33m ([m[1;31morigin/feature/register[m[33m)[m api verify otp + refresh otp
+[33mf51f04a[m secret user + OTP
+[33mab23d47[m config send email khi register + templates email
+[33m076fc8e[m send email
+[33mb3f515f[m[33m ([m[1;31morigin/feauture/login[m[33m, [m[1;31morigin/dev[m[33m, [m[1;32mfeauture/login[m[33m, [m[1;32mdev[m[33m)[m basic register function
+[33me4fe30c[m custom anotaion Public (bỏ qua check jwt với endpoind login)
+[33m26aa067[m tích hợp passport
+[33mda6c2f8[m create JWT Access token
+[33mf7995b8[m add user delete function
+[33m8c0394b[m add function update user
+[33m6d6f889[m config nestjs debug
+[33m321adf1[m API Create and FindAll User
+[33mbfd9c89[m hash password
+[33mb378a23[m validation prop
+[33ma628aec[m create base models
+[33md8e0e46[m project config
+[33m8dec58f[m[33m ([m[1;32mmaster[m[33m)[m add docker-compose
+[33mb0423dc[m update package
+[33mb231112[m[33m ([m[1;31morigin/master[m[33m)[m init project
