@@ -64,6 +64,9 @@ export class AuthController {
   @Public()
   async verifyOTP(@Body() body: { id: string; otp: string }) {
     const { id, otp } = body;
+    if (!id || !otp) {
+      throw new BadRequestException('Thiếu thông tin');
+    }
     const isValid = await this.authService.verifyOTP(id, otp);
     if (isValid) {
       return { message: 'Xác thực OTP thành công. Tài khoản đã được kích hoạt.' };

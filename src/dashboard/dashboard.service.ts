@@ -3,14 +3,15 @@ import { CreateDashboardDto } from './dto/create-dashboard.dto';
 import { UpdateDashboardDto } from './dto/update-dashboard.dto';
 import { UsersService } from 'src/modules/users/users.service';
 import { FindAllUsersDto } from './dto/find-all-users.dto';
+import { CreateUserDto } from 'src/modules/users/dto/create-user.dto';
 
 @Injectable()
 export class DashboardService {
   constructor(
     private usersService: UsersService,
   ) { }
-  create(createDashboardDto: CreateDashboardDto) {
-    return 'This action adds a new dashboard';
+  async create(createDashboardDto: CreateDashboardDto) {
+    return this.usersService.createInAdmin(createDashboardDto);
   }
 
   async findAll({ query, current, pageSize }: FindAllUsersDto) {

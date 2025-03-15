@@ -6,7 +6,7 @@ import { AuthService } from '../auth.service';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
-    
+
   constructor(private authService: AuthService) {
     super({ usernameField: 'email' });
   }
@@ -16,8 +16,12 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException("Email/Password không hợp lệ");
     }
-    if(user.isActive ===false){
-      throw new BadRequestException("Tài khoản chưa được kích hoạt")
+    if (user.isActive === false) {
+      throw new BadRequestException({
+        message: "Tài khoản chưa được kích hoạt",
+        userId: user._id.toString(), // Convert ObjectId to string if needed
+        status: "INACTIVE"
+      });
     }
     return user;
   }

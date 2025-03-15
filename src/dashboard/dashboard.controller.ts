@@ -16,12 +16,14 @@ export class DashboardController {
   ) { }
 
   @Post()
+  @Roles('ADMIN')
+  @UsePipes(new ValidationPipe({ transform: true })) // tự động chuyển đổi dữ liệu theo đúng FindAllUsersDto
   create(@Body() createDashboardDto: CreateDashboardDto) {
     return this.dashboardService.create(createDashboardDto);
   }
 
   @Get()
-  @Roles('USER')
+  @Roles('ADMIN')
   @UsePipes(new ValidationPipe({ transform: true })) // tự động chuyển đổi dữ liệu theo đúng FindAllUsersDto
   async findAll(@Query() findAllUsersDto: FindAllUsersDto) {
     return this.dashboardService.findAll(findAllUsersDto);

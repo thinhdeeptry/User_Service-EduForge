@@ -8,6 +8,7 @@ import { hashPasswordHelper } from 'src/helpers/util';
 import aqp from 'api-query-params';
 import mongoose from 'mongoose';
 import { CreateAuthDto } from 'src/auth/dto/create-auth.dto';
+import { CreateDashboardDto } from 'src/dashboard/dto/create-dashboard.dto';
 
 @Injectable()
 export class UsersService {
@@ -25,6 +26,19 @@ export class UsersService {
     }
     return false;
   }
+  async createInAdmin(createDashboardDto: CreateDashboardDto) {
+    const hashPassword = await hashPasswordHelper(createDashboardDto.password);
+    const { name, email, phone, address, image } = createDashboardDto;
+    const isEmailExit = await this.isEmailExit(email);
+    if (isEmailExit) {
+      throw new BadRequestException(`Email ${email} đã tồn tại, vui lòng sử dụng email khác!`);
+    }
+    const user = await this.userModel.create({
+      name, email, password: hashPassword, phone, address, image
+    });
+    return { _id: user._id };
+  }
+  
   async create(createUserDto: CreateUserDto) {
     const hashPassword = await hashPasswordHelper(createUserDto.password);
     const { name, email, phone, address, image } = createUserDto;
@@ -43,7 +57,7 @@ export class UsersService {
       .find(filter)
       .skip(skip)
       .limit(limit)
-      .select('-password -otpSecret') // Loại bỏ dữ liệu nhạy cảm
+      .select('-password -otpSecret -otpExpiresAt -otp') // Loại bỏ dữ liệu nhạy cảm
       .exec();
   }
 
