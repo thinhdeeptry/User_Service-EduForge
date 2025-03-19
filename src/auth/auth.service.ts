@@ -21,7 +21,7 @@ export class AuthService {
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(username);
     console.log(user);
-    
+
     if (!user) {
       throw new UnauthorizedException("Email hoặc password không hợp lệ");
     }
@@ -39,6 +39,11 @@ export class AuthService {
 
   async login(user: any) {
     const payload = { username: user.email, sub: user._id, role: user.role };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN,
+    });
     return {
       user: {
         id: user._id,
@@ -49,11 +54,25 @@ export class AuthService {
         address: user.adress,
         role: user.role,
         accountType: user.accountType,
+        createAt: user.createAt
       },
-      access_token: this.jwtService.sign(payload),
+      access_token: accessToken,
+      refreshToken: refreshToken
     };
   }
-
+  async refreshToken(refreshToken: string) {
+    try {
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: process.env.JWT_SECRET,
+      });
+      const user = await this.usersService.findBy_id(payload.sub);
+      if (!user) throw new Error('User not found');
+      const newAccessToken = this.jwtService.sign({ username: user.email, sub: user._id, role: user.role });
+      return { accessToken: newAccessToken };
+    } catch (error) {
+      throw new Error('Invalid refresh token');
+    }
+  }
   async handleRegister(register: CreateAuthDto) {
     const { name, email, password } = register;
     //check email

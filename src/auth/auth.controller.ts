@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, BadRequestException, InternalServerErrorException, Res, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { LocalAuthGuard } from './passport/local-auth.guard';
@@ -22,12 +22,77 @@ export class AuthController {
   @Post("login")
   @Public()
   @UseGuards(LocalAuthGuard)
-  handleLogin(@Request() req) {
-    console.log("req.user", req.user);
+  async handleLogin(@Request() req, @Res({ passthrough: true }) res) {
+    const authResult = await this.authService.login(req.user);
+    // Set refreshToken in an HTTP-only cookie
+    res.cookie('refreshToken', authResult.refreshToken, {
+      httpOnly: true,
+      secure: false, // Đảm bảo là false khi chạy trên localhost
+      // sameSite: 'lax', 
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+      path: '/', // Restrict cookie to auth routes
+      // domain: 'localhost'
+    });
 
-    return this.authService.login(req.user);
+    // Return everything except the refreshToken
+    const { refreshToken, ...result } = authResult;
+    return result;
+  } 
+
+  // Endpoint lấy refresh token từ cookie
+  @Get('token')
+  @Public()
+  async getRefreshToken(@Request() req, @Res({ passthrough: true }) res) {
+    // Lấy refresh token từ cookie
+    // const refreshToken = req.cookies?.refreshToken;
+
+    console.log('Request cookies:', req.cookies);
+    console.log('Request headers:', req.headers);
+
+    const cookieToken = req.cookies?.refreshToken;
+    const headerCookie = req.headers.cookie;
+
+    console.log('Cookie token:', cookieToken);
+    console.log('Header cookie string:', headerCookie);
+
+    // Parse the cookie header manually if needed
+    let parsedCookieToken = null;
+    if (headerCookie && typeof headerCookie === 'string') {
+      const cookies = headerCookie.split(';').map(cookie => cookie.trim());
+      const refreshTokenCookie = cookies.find(cookie => cookie.startsWith('refreshToken='));
+      if (refreshTokenCookie) {
+        // Ensure parsedCookieToken is explicitly typed as string | null
+        console.log('Parsed cookie token:', refreshTokenCookie.split('=')[1]);
+      }
+    }
+
+    // Use the token from any available source
+    const refreshToken = cookieToken || parsedCookieToken || null;
+    // Kiểm tra xem refresh token có tồn tại không
+    if (!refreshToken) {
+      throw new BadRequestException('Không tìm thấy refresh token');
+    }
+
+    try {
+      // Gọi service để tạo access token mới từ refresh token
+      const result = await this.authService.refreshToken(refreshToken);
+
+      // Trả về access token mới
+      return {
+        accessToken: result.accessToken,
+        message: 'Tạo access token mới thành công'
+      };
+    } catch (error) {
+      // Xóa cookie refresh token nếu không hợp lệ
+      res.clearCookie('refreshToken');
+      throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
+    }
   }
 
+  @Post('refresh')
+  async refreshToken(@Body('refreshToken') refreshToken: string) {
+    return this.authService.refreshToken(refreshToken);
+  }
   // @UseGuards(JwtAuthGuard)
   @Post('register')
   @Public()
@@ -77,7 +142,7 @@ export class AuthController {
   @Post('refresh-otp')
   @Public()
   async refreshOTP(@Body('id') id: string) {
-     await this.authService.updateOTP(id);
+    await this.authService.updateOTP(id);
     return { message: `Mã OTP mới đã được gửi. Vui lòng kiểm tra email.` };
   }
 }
