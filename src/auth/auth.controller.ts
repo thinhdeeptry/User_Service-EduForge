@@ -13,6 +13,7 @@ import handlebars from 'handlebars';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuthGuard } from './passport/google-auth.guard';
 import { FacebookAuthGuard } from './passport/facebook-auth.guard';
+import { RefreshTokenGuard } from './passport/refresh-token-auth.guard';
 import { Response } from 'express';
 
 @Controller('auth')
@@ -42,38 +43,15 @@ export class AuthController {
     return authResult;
   }
 
-  // Endpoint lấy refresh token từ cookie
-  @Get('token')
-  @Public()
-  async getRefreshToken(@Request() req, @Res({ passthrough: true }) res) {
-    // Lấy refresh token từ cookie
-    // const refreshToken = req.cookies?.refreshToken;
-
-    console.log('Request cookies:', req.cookies);
-    console.log('Request headers:', req.headers);
-
-    const cookieToken = req.cookies?.refreshToken;
-    const headerCookie = req.headers.cookie;
-
-    console.log('Cookie token:', cookieToken);
-    console.log('Header cookie string:', headerCookie);
-
-    // Parse the cookie header manually if needed
-    let parsedCookieToken = null;
-    if (headerCookie && typeof headerCookie === 'string') {
-      const cookies = headerCookie.split(';').map(cookie => cookie.trim());
-      const refreshTokenCookie = cookies.find(cookie => cookie.startsWith('refreshToken='));
-      if (refreshTokenCookie) {
-        // Ensure parsedCookieToken is explicitly typed as string | null
-        console.log('Parsed cookie token:', refreshTokenCookie.split('=')[1]);
-      }
-    }
-
-    // Use the token from any available source
-    const refreshToken = cookieToken || parsedCookieToken || null;
-    // Kiểm tra xem refresh token có tồn tại không
+  // Endpoint lấy refresh token mới
+  @Post('token')
+  @UseGuards(JwtAuthGuard)
+  async getRefreshToken(@Body('refreshToken') refreshToken: string) {
+    // JwtAuthGuard đã xác thực access token và đưa thông tin vào req.user
+    console.log("check refresh>> ", refreshToken);
+    
     if (!refreshToken) {
-      throw new BadRequestException('Không tìm thấy refresh token');
+      throw new BadRequestException('Refresh token không được cung cấp');
     }
 
     try {
@@ -86,16 +64,14 @@ export class AuthController {
         message: 'Tạo access token mới thành công'
       };
     } catch (error) {
-      // Xóa cookie refresh token nếu không hợp lệ
-      res.clearCookie('refreshToken');
       throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
     }
   }
 
-  @Post('refresh')
-  async refreshToken(@Body('refreshToken') refreshToken: string) {
-    return this.authService.refreshToken(refreshToken);
-  }
+  // @Post('refresh')
+  // async refreshToken(@Body('refreshToken') refreshToken: string) {
+  //   return this.authService.refreshToken(refreshToken);
+  // }
   // @UseGuards(JwtAuthGuard)
   @Post('register')
   @Public()
@@ -159,14 +135,21 @@ export class AuthController {
     return { message: 'Google authentication initiated' };
   }
 
-  @Get('google/callback')
+  @Post('google/callback')
   @Public()
   @UseGuards(GoogleAuthGuard)
-  googleAuthCallback(@Request() req, @Res() res: Response) {
-    // After successful Google authentication, redirect to frontend with token
-    const { access_token, refreshToken } = req.user;
-    const redirectUrl = `${this.configService.get<string>('FRONTEND_URL')}/auth/social-callback?token=${access_token}&refreshToken=${refreshToken}`;
-    return res.redirect(redirectUrl);
+  async googleAuthCallback(@Request() req, @Res() res: Response) {
+    console.log("req.user: ",req.user);
+    const { accessToken, refreshToken } = req.user;
+    return res.status(200).json({
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        name: req.user.name,
+      },
+      accessToken: accessToken,
+      refreshToken: refreshToken
+    });
   }
 
   // Facebook OAuth routes

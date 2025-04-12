@@ -9,6 +9,7 @@ import { LocalStrategy } from './passport/local.strategy';
 import { JwtStrategy } from './passport/jwt.strategy';
 import { GoogleStrategy } from './passport/google.strategy';
 import { FacebookStrategy } from './passport/facebook.strategy';
+import { RefreshTokenStrategy } from './passport/refresh-token.strategy';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { APP_GUARD } from '@nestjs/core';
 import { RolesGuard } from './RolesGuard';
@@ -40,6 +41,7 @@ import { RolesGuard } from './RolesGuard';
   JwtStrategy,
   GoogleStrategy,
   FacebookStrategy,
+  RefreshTokenStrategy,
 ],
 })
 export class AuthModule {}
