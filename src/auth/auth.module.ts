@@ -7,6 +7,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { LocalStrategy } from './passport/local.strategy';
 import { JwtStrategy } from './passport/jwt.strategy';
+import { GoogleStrategy } from './passport/google.strategy';
+import { FacebookStrategy } from './passport/facebook.strategy';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { APP_GUARD } from '@nestjs/core';
 import { RolesGuard } from './RolesGuard';
@@ -33,9 +35,11 @@ import { RolesGuard } from './RolesGuard';
     {
     provide: APP_GUARD,
     useClass: RolesGuard, // Áp dụng RolesGuard toàn cục
-  }, 
-  LocalStrategy, 
-  JwtStrategy, 
+  },
+  LocalStrategy,
+  JwtStrategy,
+  GoogleStrategy,
+  FacebookStrategy,
 ],
 })
 export class AuthModule {}

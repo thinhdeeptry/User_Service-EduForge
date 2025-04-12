@@ -9,6 +9,7 @@ import fs from 'fs';
 import handlebars from 'handlebars';
 import { Resend } from 'resend';
 import { ConfigService } from '@nestjs/config';
+import { User } from 'src/modules/users/schemas/user.schema';
 
 @Injectable()
 export class AuthService {
@@ -56,7 +57,7 @@ export class AuthService {
         accountType: user.accountType,
         createAt: user.createAt
       },
-      access_token: accessToken,
+      accessToken: accessToken,
       refreshToken: refreshToken
     };
   }
@@ -172,5 +173,50 @@ export class AuthService {
     await this.usersService.updateIsActive(user._id.toString(), true);
     await this.usersService.clearOTP(user._id.toString()); // Xóa secret và OTP sau khi xác thực
     return true;
+  }
+
+  async socialLogin(socialUser: any) {
+    try {
+      // Check if user exists with this email
+      let user = await this.usersService.findByEmail(socialUser.email);
+
+      if (user) {
+        // If user exists but with different login method (LOCAL)
+        if (user.accountType === 'LOCAL') {
+          // Update user to link social account
+          await this.usersService.update({
+            _id: user._id.toString(),
+            providerId: socialUser.providerId,
+            name: user.name,
+            email: user.email,
+            otp: user.otp || '',
+            otpExpiresAt: user.otpExpiresAt
+            // Keep the existing account type to maintain password login capability
+          });
+        } else if (user.accountType !== socialUser.provider) {
+          // User exists but with a different social provider
+          // We'll just log them in with the existing account
+          // You could also update the account to link multiple providers if desired
+        }
+      } else {
+        // Create new user with social login info
+        const newUser = await this.usersService.createSocialUser({
+          name: socialUser.name,
+          email: socialUser.email,
+          image: socialUser.image,
+          accountType: socialUser.provider,
+          providerId: socialUser.providerId,
+          isActive: true, // Social login users are automatically activated
+        });
+
+        user = await this.usersService.findBy_id(newUser._id.toString());
+      }
+
+      // Generate JWT token and return user info
+      return this.login(user);
+    } catch (error) {
+      console.error('Social login error:', error);
+      throw new InternalServerErrorException('Đăng nhập bằng tài khoản xã hội thất bại');
+    }
   }
 }

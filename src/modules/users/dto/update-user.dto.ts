@@ -8,7 +8,7 @@ export class UpdateUserDto  {
     _id: string;
     @IsOptional()
     name: string;
-    @IsOptional() 
+    @IsOptional()
     email: string;
     @IsOptional()
     phone?: string;
@@ -18,8 +18,12 @@ export class UpdateUserDto  {
     image?: string;
     @IsOptional()
     otpSecret?: string;
-   @IsOptional()
+    @IsOptional()
     otp: string;
-   @IsOptional()
+    @IsOptional()
     otpExpiresAt: Date;
+    @IsOptional()
+    providerId?: string;
+    @IsOptional()
+    accountType?: string;
 }

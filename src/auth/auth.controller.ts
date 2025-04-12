@@ -11,6 +11,9 @@ import { register } from 'module';
 import * as fs from 'fs';
 import handlebars from 'handlebars';
 import { ConfigService } from '@nestjs/config';
+import { GoogleAuthGuard } from './passport/google-auth.guard';
+import { FacebookAuthGuard } from './passport/facebook-auth.guard';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -25,19 +28,19 @@ export class AuthController {
   async handleLogin(@Request() req, @Res({ passthrough: true }) res) {
     const authResult = await this.authService.login(req.user);
     // Set refreshToken in an HTTP-only cookie
-    res.cookie('refreshToken', authResult.refreshToken, {
-      httpOnly: true,
-      secure: false, // Đảm bảo là false khi chạy trên localhost
-      // sameSite: 'lax', 
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
-      path: '/', // Restrict cookie to auth routes
-      // domain: 'localhost'
-    });
+    // res.cookie('refreshToken', authResult.refreshToken, {
+    //   httpOnly: true,
+    //   secure: false, // Đảm bảo là false khi chạy trên localhost
+    //   // sameSite: 'lax',
+    //   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    //   path: '/', // Restrict cookie to auth routes
+    //   // domain: 'localhost'
+    // });
 
     // Return everything except the refreshToken
-    const { refreshToken, ...result } = authResult;
-    return result;
-  } 
+    // const { refreshToken, ...result } = authResult;
+    return authResult;
+  }
 
   // Endpoint lấy refresh token từ cookie
   @Get('token')
@@ -144,5 +147,45 @@ export class AuthController {
   async refreshOTP(@Body('id') id: string) {
     await this.authService.updateOTP(id);
     return { message: `Mã OTP mới đã được gửi. Vui lòng kiểm tra email.` };
+  }
+
+  // Google OAuth routes
+  @Get('google')
+  @Public()
+  @UseGuards(GoogleAuthGuard)
+  googleAuth() {
+    // This route initiates the Google OAuth flow
+    // The guard will handle the redirect to Google
+    return { message: 'Google authentication initiated' };
+  }
+
+  @Get('google/callback')
+  @Public()
+  @UseGuards(GoogleAuthGuard)
+  googleAuthCallback(@Request() req, @Res() res: Response) {
+    // After successful Google authentication, redirect to frontend with token
+    const { access_token, refreshToken } = req.user;
+    const redirectUrl = `${this.configService.get<string>('FRONTEND_URL')}/auth/social-callback?token=${access_token}&refreshToken=${refreshToken}`;
+    return res.redirect(redirectUrl);
+  }
+
+  // Facebook OAuth routes
+  @Get('facebook')
+  @Public()
+  @UseGuards(FacebookAuthGuard)
+  facebookAuth() {
+    // This route initiates the Facebook OAuth flow
+    // The guard will handle the redirect to Facebook
+    return { message: 'Facebook authentication initiated' };
+  }
+
+  @Get('facebook/callback')
+  @Public()
+  @UseGuards(FacebookAuthGuard)
+  facebookAuthCallback(@Request() req, @Res() res: Response) {
+    // After successful Facebook authentication, redirect to frontend with token
+    const { access_token, refreshToken } = req.user;
+    const redirectUrl = `${this.configService.get<string>('FRONTEND_URL')}/auth/social-callback?token=${access_token}&refreshToken=${refreshToken}`;
+    return res.redirect(redirectUrl);
   }
 }

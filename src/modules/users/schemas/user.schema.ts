@@ -9,7 +9,7 @@ export class User {
     name: string;
     @Prop({ required: true })
     email: string;
-    @Prop({ required: true })
+    @Prop({ required: false }) // Make password optional for social login
     password: string;
     @Prop({ required: false })
     phone: string;
@@ -19,7 +19,7 @@ export class User {
     image: string;
     @Prop({ default: "USER",enum: ['ADMIN', 'USER'] })
     role: string;
-    @Prop({ default: "LOCAL" })
+    @Prop({ default: "LOCAL", enum: ['LOCAL', 'GOOGLE', 'FACEBOOK'] })
     accountType: string;
     @Prop({ default: false })
     isActive: boolean;
@@ -29,6 +29,8 @@ export class User {
     otp: string;
     @Prop({ required: false })
     otpExpiresAt: Date;
+    @Prop({ required: false })
+    providerId: string; // ID from the social provider
 
 }
 

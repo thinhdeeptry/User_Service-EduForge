@@ -38,7 +38,7 @@ export class UsersService {
     });
     return { _id: user._id };
   }
-  
+
   async create(createUserDto: CreateUserDto) {
     const hashPassword = await hashPasswordHelper(createUserDto.password);
     const { name, email, phone, address, image } = createUserDto;
@@ -112,5 +112,18 @@ export class UsersService {
 
   async updateIsActive(userId: string, isActive: boolean) {
     await this.userModel.updateOne({ _id: userId }, { isActive });
+  }
+
+  async createSocialUser(userData: any) {
+    // Create a new user with social login data
+    const user = await this.userModel.create({
+      name: userData.name,
+      email: userData.email,
+      image: userData.image,
+      accountType: userData.accountType,
+      providerId: userData.providerId,
+      isActive: userData.isActive || true,
+    });
+    return { _id: user._id };
   }
 }
