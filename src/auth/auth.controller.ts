@@ -49,7 +49,7 @@ export class AuthController {
   async getRefreshToken(@Body('refreshToken') refreshToken: string) {
     // JwtAuthGuard đã xác thực access token và đưa thông tin vào req.user
     console.log("check refresh>> ", refreshToken);
-    
+
     if (!refreshToken) {
       throw new BadRequestException('Refresh token không được cung cấp');
     }
@@ -135,7 +135,7 @@ export class AuthController {
     return { message: 'Google authentication initiated' };
   }
 
-  @Post('google/callback')
+  @Post('google')
   @Public()
   @UseGuards(GoogleAuthGuard)
   async googleAuthCallback(@Request() req, @Res() res: Response) {
@@ -162,6 +162,29 @@ export class AuthController {
     return { message: 'Facebook authentication initiated' };
   }
 
+  // Endpoint để xử lý thông tin người dùng từ Google mà frontend đã nhận được
+  @Post('google-token')
+  @Public()
+  async googleToken(@Body() userData: any) {
+    try {
+      // Xử lý thông tin người dùng từ Google
+      const socialUser = {
+        email: userData.email,
+        name: userData.name,
+        image: userData.picture,
+        provider: 'GOOGLE',
+        providerId: userData.sub || userData.id,
+      };
+      console.log("socialUser: ",socialUser);
+      // Gọi service để xử lý đăng nhập xã hội
+      const result = await this.authService.socialLogin(socialUser);
+      return result;
+    } catch (error) {
+      console.error('Google token login error:', error);
+      throw new BadRequestException('Đăng nhập bằng Google thất bại');
+    }
+  }
+
   @Get('facebook/callback')
   @Public()
   @UseGuards(FacebookAuthGuard)
@@ -170,5 +193,28 @@ export class AuthController {
     const { access_token, refreshToken } = req.user;
     const redirectUrl = `${this.configService.get<string>('FRONTEND_URL')}/auth/social-callback?token=${access_token}&refreshToken=${refreshToken}`;
     return res.redirect(redirectUrl);
+  }
+
+  // Endpoint để xử lý thông tin người dùng từ Facebook mà frontend đã nhận được
+  @Post('facebook-token')
+  @Public()
+  async facebookToken(@Body() userData: any) {
+    try {
+      // Xử lý thông tin người dùng từ Facebook
+      const socialUser = {
+        email: userData.email,
+        name: userData.name,
+        image: userData.picture?.data?.url || userData.picture,
+        provider: 'FACEBOOK',
+        providerId: userData.id,
+      };
+
+      // Gọi service để xử lý đăng nhập xã hội
+      const result = await this.authService.socialLogin(socialUser);
+      return result;
+    } catch (error) {
+      console.error('Facebook token login error:', error);
+      throw new BadRequestException('Đăng nhập bằng Facebook thất bại');
+    }
   }
 }
