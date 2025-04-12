@@ -9,15 +9,15 @@ services:
     volumes:
       - mongodb_data_container:/data/db
       
-  #user-service:
-    #build: .  # Build from local Dockerfile instead of using image
-    #image: thinhdz1500/user-service:1.5
-    #ports:
-      #- 3001:3001
-    #env_file:
-     #   - ./.env
-    #depends_on:
-     # - mongodb
+  user-service:
+    build: .  # Build from local Dockerfile instead of using image
+    image: thinhdz1500/user-service:1.5
+    ports:
+      - 3001:3001
+    env_file:
+        - ./.env
+    depends_on:
+      - mongodb
 volumes:
     mongodb_data_container:
 
