@@ -174,6 +174,7 @@ export class AuthController {
         image: userData.picture,
         provider: 'GOOGLE',
         providerId: userData.sub || userData.id,
+        iss: "H4QEJwJtiG0udsGAVYlFhJiqWrwctTLR"
       };
       console.log("socialUser: ",socialUser);
       // Gọi service để xử lý đăng nhập xã hội

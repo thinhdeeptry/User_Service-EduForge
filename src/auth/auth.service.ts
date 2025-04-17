@@ -39,7 +39,7 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { username: user.email, sub: user._id, role: user.role };
+    const payload = { username: user.email, sub: user._id, role: user.role, iss: "H4QEJwJtiG0udsGAVYlFhJiqWrwctTLR" };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
@@ -68,7 +68,7 @@ export class AuthService {
       });
       const user = await this.usersService.findBy_id(payload.sub);
       if (!user) throw new Error('User not found');
-      const newAccessToken = this.jwtService.sign({ username: user.email, sub: user._id, role: user.role });
+      const newAccessToken = this.jwtService.sign({ username: user.email, sub: user._id, role: user.role, iss: "H4QEJwJtiG0udsGAVYlFhJiqWrwctTLR" });
       return { accessToken: newAccessToken };
     } catch (error) {
       throw new Error('Invalid refresh token');
