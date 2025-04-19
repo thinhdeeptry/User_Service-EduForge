@@ -22,6 +22,7 @@ export class AuthService {
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(username);
     console.log(user);
+    console.log("check pass>>> ", pass);
 
     if (!user) {
       throw new UnauthorizedException("Email hoặc password không hợp lệ");
@@ -39,7 +40,9 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { username: user.email, sub: user._id, role: user.role, iss: "H4QEJwJtiG0udsGAVYlFhJiqWrwctTLR" };
+    const jwtIssuer = this.configService.get<string>('JWT_ISSUER');
+    console.log("check iss>>> ", jwtIssuer);
+    const payload = { username: user.email, sub: user._id, role: user.role, iss: jwtIssuer };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
@@ -63,12 +66,14 @@ export class AuthService {
   }
   async refreshToken(refreshToken: string) {
     try {
+      const jwtSecret = this.configService.get<string>('JWT_SECRET');
+      const jwtIssuer = this.configService.get<string>('JWT_ISSUER');
       const payload = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_SECRET,
+        secret: jwtSecret,
       });
       const user = await this.usersService.findBy_id(payload.sub);
       if (!user) throw new Error('User not found');
-      const newAccessToken = this.jwtService.sign({ username: user.email, sub: user._id, role: user.role, iss: "H4QEJwJtiG0udsGAVYlFhJiqWrwctTLR" });
+      const newAccessToken = this.jwtService.sign({ username: user.email, sub: user._id, role: user.role, iss: jwtIssuer });
       return { accessToken: newAccessToken };
     } catch (error) {
       throw new Error('Invalid refresh token');
@@ -245,8 +250,10 @@ export class AuthService {
             providerId: socialUser.providerId,
             name: user.name,
             email: user.email,
+            password: user.password,
             otp: user.otp || '',
-            otpExpiresAt: user.otpExpiresAt
+            otpExpiresAt: user.otpExpiresAt,
+            accountType: socialUser.provider, // Update account type to match social provider
             // Keep the existing account type to maintain password login capability
           });
         } else if (user.accountType !== socialUser.provider) {

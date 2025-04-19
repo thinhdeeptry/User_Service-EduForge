@@ -11,6 +11,8 @@ export class UpdateUserDto  {
     @IsOptional()
     email: string;
     @IsOptional()
+    password?: string;
+    @IsOptional()
     phone?: string;
     @IsOptional()
     address?: string;
