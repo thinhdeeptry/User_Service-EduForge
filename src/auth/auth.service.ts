@@ -207,11 +207,16 @@ export class AuthService {
     
     // Hash the new password
     const hashedPassword = await hashPasswordHelper(newPassword);
-    
+    const user = await this.usersService.findBy_id(id);
     // Update user's password
     await this.usersService.update({
       _id: id,
-      password: hashedPassword
+      name: user?.name || '',
+      email: user?.email || '',
+      password: hashedPassword,
+      otp: '',
+      otpExpiresAt: new Date(),
+      accountType: user?.accountType || 'LOCAL',
     });
     
     return { message: 'Mật khẩu đã được cập nhật thành công' };
