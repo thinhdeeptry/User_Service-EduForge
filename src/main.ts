@@ -22,7 +22,6 @@ async function bootstrap() {
     next();
   });
   //exclude: thay đổi đường dẫn mặc định của api
-  app.setGlobalPrefix('api/v1', { exclude: [''] });
   app.enableCors({
     origin: ['http://localhost:3000'],
     // origin: true,
