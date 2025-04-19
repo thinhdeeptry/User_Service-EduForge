@@ -5,15 +5,12 @@ import { UpdateDashboardDto } from './dto/update-dashboard.dto';
 import { JwtAuthGuard } from 'src/auth/passport/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/RolesGuard';
 import { Roles } from 'src/decorator/roles.decorator';
-import { AuthService } from 'src/auth/auth.service';
 import { FindAllUsersDto } from './dto/find-all-users.dto';
 
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService,
-
-  ) { }
+  constructor(private readonly dashboardService: DashboardService) { }
 
   @Post()
   @Roles('ADMIN')
@@ -31,17 +28,23 @@ export class DashboardController {
 
 
   @Get(':id')
+  @Roles('ADMIN')
   findOne(@Param('id') id: string) {
-    return this.dashboardService.findOne(+id);
+    return this.dashboardService.findOne(id);
   }
 
   @Patch(':id')
+  @Roles('ADMIN')
+  @UsePipes(new ValidationPipe({ transform: true }))
   update(@Param('id') id: string, @Body() updateDashboardDto: UpdateDashboardDto) {
-    return this.dashboardService.update(+id, updateDashboardDto);
+    // Ensure the ID is set in the DTO
+    updateDashboardDto._id = id;
+    return this.dashboardService.update(id, updateDashboardDto);
   }
 
   @Delete(':id')
+  @Roles('ADMIN')
   remove(@Param('id') id: string) {
-    return this.dashboardService.remove(+id);
+    return this.dashboardService.remove(id);
   }
 }
