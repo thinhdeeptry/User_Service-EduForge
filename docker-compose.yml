@@ -10,8 +10,10 @@ services:
       - mongodb_data_container:/data/db
       
   user-service:
-    #build: .  # Build from local Dockerfile instead of using image
-    image: thinhdz1500/user-service:1.6
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ##build: .  # Build from local Dockerfile instead of using image
     container_name: user-service
     ports:
       - 3001:3001
