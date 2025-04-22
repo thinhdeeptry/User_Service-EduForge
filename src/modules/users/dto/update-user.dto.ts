@@ -28,4 +28,6 @@ export class UpdateUserDto  {
     providerId?: string;
     @IsOptional()
     accountType?: string;
+    @IsOptional()
+    isActive?: boolean;
 }
