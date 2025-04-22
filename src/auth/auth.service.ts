@@ -131,9 +131,26 @@ export class AuthService {
       throw new InternalServerErrorException('Không thể cập nhật OTP. Vui lòng thử lại.');
     }
   }
-  async sendOTP(id: string): Promise<void> {
-    const { otp } = await this.updateOTP(id);
-    const user = await this.usersService.findBy_id(id);
+  // Modified to work with email instead of just ID
+  async sendOTP(idOrEmail: string): Promise<void> {
+    let user;
+    
+    // Check if the input is an email
+    if (idOrEmail.includes('@')) {
+      user = await this.usersService.findByEmail(idOrEmail);
+      if (!user) {
+        throw new BadRequestException('Email không tồn tại trong hệ thống');
+      }
+    } else {
+      // If not an email, treat as ID
+      user = await this.usersService.findBy_id(idOrEmail);
+      if (!user) {
+        throw new BadRequestException('User không tồn tại');
+      }
+    }
+    
+    const { otp } = await this.updateOTP(user._id.toString());
+    
     try {
       const resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
       const template = await fs.promises.readFile('src/mail/templates/register.hbs', 'utf8');
@@ -159,6 +176,50 @@ export class AuthService {
       console.error('Send email error:', error);
       throw new InternalServerErrorException('Không thể gửi mã OTP. Vui lòng thử lại.');
     }
+  }
+
+  // Add forgot password method
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      // For security reasons, don't reveal if email exists or not
+      return { message: 'Nếu email tồn tại, một mã OTP sẽ được gửi đến email của bạn' };
+    }
+
+    try {
+      // Send OTP to user's email
+      await this.sendOTP(email);
+      return { message: 'Mã OTP đã được gửi đến email của bạn' };
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      throw new InternalServerErrorException('Không thể gửi mã OTP. Vui lòng thử lại.');
+    }
+  }
+
+  // Add reset password method
+  async resetPassword(id: string, otp: string, newPassword: string): Promise<{ message: string }> {
+    // Verify OTP first
+    const isValid = await this.verifyOTP(id, otp);
+    
+    if (!isValid) {
+      throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+    }
+    
+    // Hash the new password
+    const hashedPassword = await hashPasswordHelper(newPassword);
+    const user = await this.usersService.findBy_id(id);
+    // Update user's password
+    await this.usersService.update({
+      _id: id,
+      name: user?.name || '',
+      email: user?.email || '',
+      password: hashedPassword,
+      otp: '',
+      otpExpiresAt: new Date(),
+      accountType: user?.accountType || 'LOCAL',
+    });
+    
+    return { message: 'Mật khẩu đã được cập nhật thành công' };
   }
 
   async verifyOTP(id: string, otp: string): Promise<boolean> {
