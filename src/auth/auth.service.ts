@@ -111,6 +111,8 @@ export class AuthService {
   // Cập nhật OTP cho user
   async updateOTP(id: string): Promise<{ otp: string; expiresAt: Date }> {
     try {
+      console.log("check id>>> ", id);
+
       const user = await this.usersService.findBy_id(id);
       if (!user) throw new BadRequestException('User not found');
       let secret = user.otpSecret;
@@ -128,73 +130,74 @@ export class AuthService {
       // Trả về OTP và thời gian hết hạn để gửi qua email hoặc giao diện
       return { otp, expiresAt };
     } catch (error) {
+      throw new Error(error)
       throw new InternalServerErrorException('Không thể cập nhật OTP. Vui lòng thử lại.');
     }
   }
   // Modified to work with email instead of just ID
-  async sendOTP(idOrEmail: string): Promise<void> {
-    let user;
+  // async sendOTP(idOrEmail: string): Promise<void> {
+  //   let user;
     
-    // Check if the input is an email
-    if (idOrEmail.includes('@')) {
-      user = await this.usersService.findByEmail(idOrEmail);
-      if (!user) {
-        throw new BadRequestException('Email không tồn tại trong hệ thống');
-      }
-    } else {
-      // If not an email, treat as ID
-      user = await this.usersService.findBy_id(idOrEmail);
-      if (!user) {
-        throw new BadRequestException('User không tồn tại');
-      }
-    }
+  //   // Check if the input is an email
+  //   if (idOrEmail.includes('@')) {
+  //     user = await this.usersService.findByEmail(idOrEmail);
+  //     if (!user) {
+  //       throw new BadRequestException('Email không tồn tại trong hệ thống');
+  //     }
+  //   } else {
+  //     // If not an email, treat as ID
+  //     user = await this.usersService.findBy_id(idOrEmail);
+  //     if (!user) {
+  //       throw new BadRequestException('User không tồn tại');
+  //     }
+  //   }
     
-    const { otp } = await this.updateOTP(user._id.toString());
+  //   const { otp } = await this.updateOTP(user._id.toString());
     
-    try {
-      const resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
-      const template = await fs.promises.readFile('src/mail/templates/register.hbs', 'utf8');
-      const compiledTemplate = handlebars.compile(template);
-      const html = compiledTemplate({
-        name: user?.name ?? user?.email,
-        activationCode: otp
-      });
-      const { data, error } = await resend.emails.send({
-        from: 'EduForge<auth@eduforge.io.vn>',
-        to: user?.email ? [user.email] : [],
-        subject: 'Account Activation - EduForge',
-        html: html
-      });
+  //   try {
+  //     const resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+  //     const template = await fs.promises.readFile('src/mail/templates/register.hbs', 'utf8');
+  //     const compiledTemplate = handlebars.compile(template);
+  //     const html = compiledTemplate({
+  //       name: user?.name ?? user?.email,
+  //       activationCode: otp
+  //     });
+  //     const { data, error } = await resend.emails.send({
+  //       from: 'EduForge<auth@eduforge.io.vn>',
+  //       to: user?.email ? [user.email] : [],
+  //       subject: 'Account Activation - EduForge',
+  //       html: html
+  //     });
 
-      if (error) {
-        console.error({ error });
-        throw new InternalServerErrorException('Failed to send email');
-      }
+  //     if (error) {
+  //       console.error({ error });
+  //       throw new InternalServerErrorException('Failed to send email');
+  //     }
 
-      console.log(`Send email success to ${user?.email}`);
-    } catch (error) {
-      console.error('Send email error:', error);
-      throw new InternalServerErrorException('Không thể gửi mã OTP. Vui lòng thử lại.');
-    }
-  }
+  //     console.log(`Send email success to ${user?.email}`);
+  //   } catch (error) {
+  //     console.error('Send email error:', error);
+  //     throw new InternalServerErrorException('Không thể gửi mã OTP. Vui lòng thử lại.');
+  //   }
+  // }
 
   // Add forgot password method
-  async forgotPassword(email: string): Promise<{ message: string }> {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) {
-      // For security reasons, don't reveal if email exists or not
-      return { message: 'Nếu email tồn tại, một mã OTP sẽ được gửi đến email của bạn' };
-    }
+  // async forgotPassword(email: string): Promise<{ message: string }> {
+  //   const user = await this.usersService.findByEmail(email);
+  //   if (!user) {
+  //     // For security reasons, don't reveal if email exists or not
+  //     return { message: 'Nếu email tồn tại, một mã OTP sẽ được gửi đến email của bạn' };
+  //   }
 
-    try {
-      // Send OTP to user's email
-      await this.sendOTP(email);
-      return { message: 'Mã OTP đã được gửi đến email của bạn' };
-    } catch (error) {
-      console.error('Forgot password error:', error);
-      throw new InternalServerErrorException('Không thể gửi mã OTP. Vui lòng thử lại.');
-    }
-  }
+  //   try {
+  //     // Send OTP to user's email
+  //     await this.sendOTP(email);
+  //     return { message: 'Mã OTP đã được gửi đến email của bạn' };
+  //   } catch (error) {
+  //     console.error('Forgot password error:', error);
+  //     throw new InternalServerErrorException('Không thể gửi mã OTP. Vui lòng thử lại.');
+  //   }
+  // }
 
   // Add reset password method
   async resetPassword(id: string, otp: string, newPassword: string): Promise<{ message: string }> {
@@ -245,7 +248,7 @@ export class AuthService {
     try {
       // Check if user exists with this email
       let user = await this.usersService.findByEmail(socialUser.email);
-
+      console.log("check user>>> ", user);
       if (user) {
         // If user exists but with different login method (LOCAL)
         if (user.accountType === 'LOCAL') {
@@ -254,11 +257,13 @@ export class AuthService {
             _id: user._id.toString(),
             providerId: socialUser.providerId,
             name: user.name,
+            image: user.image,
             email: user.email,
             password: user.password,
             otp: user.otp || '',
             otpExpiresAt: user.otpExpiresAt,
-            accountType: socialUser.provider, // Update account type to match social provider
+            isActive: true,
+            accountType: "GOOGLE", // Update account type to match social provider
             // Keep the existing account type to maintain password login capability
           });
         } else if (user.accountType !== socialUser.provider) {
@@ -286,5 +291,148 @@ export class AuthService {
       console.error('Social login error:', error);
       throw new InternalServerErrorException('Đăng nhập bằng tài khoản xã hội thất bại');
     }
+  }
+  // Get user by email - helper method
+  async getUserByEmail(email: string) {
+    return this.usersService.findByEmail(email);
+  }
+
+  // Get user by ID - helper method
+  async getUserById(id: string) {
+    return this.usersService.findBy_id(id);
+  }
+
+  // Update user password - helper method
+  async updateUserPassword(userId: string, hashedPassword: string) {
+    const user = await this.usersService.findBy_id(userId);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    
+    return this.usersService.update({
+      _id: userId,
+      name: user.name,
+      email: user.email,
+      password: hashedPassword,
+      accountType: user.accountType || 'LOCAL',
+      otp: user.otp || '',
+      otpExpiresAt: user.otpExpiresAt,
+    });
+  }
+
+  // Modified sendOTP to handle forgot password
+  async sendOTP(idOrEmail: string, isPasswordReset: boolean = false): Promise<void> {
+    let user;
+    
+    // Check if the input is an email
+    if (idOrEmail.includes('@')) {
+      user = await this.usersService.findByEmail(idOrEmail);
+      if (!user) {
+        throw new BadRequestException('Email không tồn tại trong hệ thống');
+      }
+    } else {
+      // If not an email, treat as ID
+      user = await this.usersService.findBy_id(idOrEmail);
+      if (!user) {
+        throw new BadRequestException('User không tồn tại');
+      }
+    }
+    
+    const { otp } = await this.updateOTP(user._id.toString());
+    
+    try {
+      const resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+      
+      // Choose template based on whether this is for password reset or account activation
+      const templatePath = isPasswordReset 
+        ? 'src/mail/templates/forgot-password.hbs' 
+        : 'src/mail/templates/register.hbs';
+      
+      const template = await fs.promises.readFile(templatePath, 'utf8');
+      const compiledTemplate = handlebars.compile(template);
+      const html = compiledTemplate({
+        name: user?.name ?? user?.email,
+        activationCode: otp
+      });
+      
+      const subject = isPasswordReset 
+        ? 'Đặt lại mật khẩu - EduForge' 
+        : 'Kích hoạt tài khoản - EduForge';
+      
+      const { data, error } = await resend.emails.send({
+        from: 'EduForge<auth@eduforge.io.vn>',
+        to: user?.email ? [user.email] : [],
+        subject: subject,
+        html: html
+      });
+
+      if (error) {
+        console.error({ error });
+        throw new InternalServerErrorException('Failed to send email');
+      }
+
+      console.log(`Send email success to ${user?.email}`);
+    } catch (error) {
+      console.error('Send email error:', error);
+      throw new InternalServerErrorException('Không thể gửi mã OTP. Vui lòng thử lại.');
+    }
+  }
+
+  // Updated forgot password method
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      // For security reasons, don't reveal if email exists or not
+      return { message: 'Nếu email tồn tại, một mã OTP sẽ được gửi đến email của bạn' };
+    }
+
+    try {
+      // Send OTP to user's email with password reset flag
+      await this.sendOTP(email, true);
+      return { 
+        message: 'Mã OTP đã được gửi đến email của bạn',
+        // Don't return user ID for security reasons
+      };
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      throw new InternalServerErrorException('Không thể gửi mã OTP. Vui lòng thử lại.');
+    }
+  }
+  async resetPasswordWithOTP(id: string, otp: string, newPassword: string): Promise<{ message: string }> {
+    const user = await this.usersService.findBy_id(id);
+    if (!user || !user.otpSecret) {
+      throw new BadRequestException('OTP không hợp lệ hoặc user không tồn tại');
+    }
+
+    // Verify OTP
+    authenticator.options = { digits: 6, step: 300 };
+    const isValid = authenticator.check(otp, user.otpSecret);
+    if (!isValid) {
+      throw new BadRequestException('Mã OTP không hợp lệ');
+    }
+
+    // Check expiration
+    if (new Date() > user.otpExpiresAt) {
+      throw new BadRequestException('Mã OTP đã hết hạn');
+    }
+
+    // Hash the new password
+    const hashedPassword = await hashPasswordHelper(newPassword);
+    
+    // Update user's password and clear OTP
+    await this.usersService.update({
+      _id: id,
+      name: user.name,
+      email: user.email,
+      password: hashedPassword,
+      accountType: user.accountType || 'LOCAL',
+      otp: user.otp,
+      otpExpiresAt: user.otpExpiresAt,
+    });
+    
+    // Clear OTP after successful password reset
+    await this.usersService.clearOTP(id);
+    
+    return { message: 'Mật khẩu đã được cập nhật thành công' };
   }
 }
