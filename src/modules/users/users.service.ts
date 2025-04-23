@@ -115,6 +115,8 @@ export class UsersService {
   }
 
   async createSocialUser(userData: any) {
+    console.log("check createSocialUser", userData);
+    
     // Create a new user with social login data
     const user = await this.userModel.create({
       name: userData.name,

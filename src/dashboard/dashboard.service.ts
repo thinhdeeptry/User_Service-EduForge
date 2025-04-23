@@ -81,4 +81,42 @@ export class DashboardService {
       message: 'User deleted successfully'
     };
   }
+
+  async getUserForService(id: string, serviceName: string) {
+    const user = await this.usersService.findBy_id(id);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    
+    // Lọc dữ liệu dựa trên service gọi đến
+    // Mỗi service chỉ nhận được thông tin cần thiết
+    switch(serviceName) {
+      case 'course-service':
+        return {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          role: user.role,
+          isActive: user.isActive
+        };
+      case 'payment-service':
+        return {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          isActive: user.isActive
+        };
+      default:
+        // Trả về thông tin cơ bản nếu không xác định được service
+        return {
+          _id: user._id,
+          email: user.email,
+          image: user.image,
+          name: user.name,
+          isActive: user.isActive
+        };
+    }
+  }
 }

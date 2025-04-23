@@ -15,6 +15,7 @@ import { GoogleAuthGuard } from './passport/google-auth.guard';
 import { FacebookAuthGuard } from './passport/facebook-auth.guard';
 import { RefreshTokenGuard } from './passport/refresh-token-auth.guard';
 import { Response } from 'express';
+import { hashPasswordHelper } from 'src/helpers/util';
 
 @Controller('auth')
 export class AuthController {
@@ -146,6 +147,7 @@ export class AuthController {
         id: req.user.id,
         email: req.user.email,
         name: req.user.name,
+        image: req.user.image,
       },
       accessToken: accessToken,
       refreshToken: refreshToken
@@ -167,14 +169,16 @@ export class AuthController {
   @Public()
   async googleToken(@Body() userData: any) {
     try {
+      console.log("userData: ",userData);
+      console.log("jwt_issuer: ",this.configService.get<string>("JWT_ISSUER"));
       // Xử lý thông tin người dùng từ Google
       const socialUser = {
         email: userData.email,
         name: userData.name,
-        image: userData.picture,
+        image: userData.image,
         provider: 'GOOGLE',
         providerId: userData.sub || userData.id,
-        iss: "H4QEJwJtiG0udsGAVYlFhJiqWrwctTLR"
+        iss: this.configService.get<string>('JWT_ISSUER'),
       };
       console.log("socialUser: ",socialUser);
       // Gọi service để xử lý đăng nhập xã hội
@@ -217,5 +221,37 @@ export class AuthController {
       console.error('Facebook token login error:', error);
       throw new BadRequestException('Đăng nhập bằng Facebook thất bại');
     }
+  }
+
+  @Post('forgot-password')
+  @Public()
+  async forgotPassword(@Body('email') email: string) {
+    if (!email) {
+      throw new BadRequestException('Email không được để trống');
+    }
+    return this.authService.forgotPassword(email);
+  }
+
+  @Post('reset-password')
+  @Public()
+  async resetPassword(@Body() body: { email: string; otp: string; newPassword: string }) {
+    const { email, otp, newPassword } = body;
+    
+    if (!email || !otp || !newPassword) {
+      throw new BadRequestException('Thiếu thông tin cần thiết');
+    }
+    
+    if (newPassword.length < 6) {
+      throw new BadRequestException('Mật khẩu phải có ít nhất 6 ký tự');
+    }
+    
+    // Find user by email
+    const user = await this.authService.getUserByEmail(email);
+    if (!user) {
+      throw new BadRequestException('Email không tồn tại trong hệ thống');
+    }
+    
+    // Reset password with OTP verification
+    return this.authService.resetPasswordWithOTP(user._id.toString(), otp, newPassword);
   }
 }
