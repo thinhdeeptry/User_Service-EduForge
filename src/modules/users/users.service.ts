@@ -28,13 +28,13 @@ export class UsersService {
   }
   async createInAdmin(createDashboardDto: CreateDashboardDto) {
     const hashPassword = await hashPasswordHelper(createDashboardDto.password);
-    const { name, email, phone, address, image } = createDashboardDto;
+    const { name, email, phone, address, image, isActive } = createDashboardDto;
     const isEmailExit = await this.isEmailExit(email);
     if (isEmailExit) {
       throw new BadRequestException(`Email ${email} đã tồn tại, vui lòng sử dụng email khác!`);
     }
     const user = await this.userModel.create({
-      name, email, password: hashPassword, phone, address, image
+      name, email, password: hashPassword, phone, address, image, isActive
     });
     return { _id: user._id };
   }
