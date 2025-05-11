@@ -269,7 +269,7 @@ export class AuthService {
             _id: user._id.toString(),
             providerId: socialUser.providerId,
             name: user.name,
-            image: user.image,
+            image: user.image || socialUser.image,
             email: user.email,
             password: user.password,
             otp: user.otp || '',
