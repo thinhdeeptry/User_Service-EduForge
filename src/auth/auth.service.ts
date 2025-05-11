@@ -10,6 +10,7 @@ import handlebars from 'handlebars';
 import { Resend } from 'resend';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/modules/users/schemas/user.schema';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +18,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private redisService: RedisService,
   ) { }
 
   async validateUser(username: string, pass: string): Promise<any> {
@@ -108,36 +110,39 @@ export class AuthService {
     return authenticator.generate(secret); // Tạo mã OTP
   }
 
-  // Cập nhật OTP cho user
+  // Cập nhật OTP cho user - sử dụng Redis
   async updateOTP(id: string): Promise<{ otp: string; expiresAt: Date }> {
     try {
       console.log("check id>>> ", id);
 
       const user = await this.usersService.findBy_id(id);
       if (!user) throw new BadRequestException('User not found');
+
+      // Tạo secret key mới nếu chưa có
       let secret = user.otpSecret;
       if (secret == null) {
         secret = this.generateSecret();
       }
+
       // Tạo mã OTP mới
       const otp = this.generateOTP(secret);
-      const expiresInMinutes = 5; // OTP hết hạn sau 5 phút
-      const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
+      const expirySeconds = this.configService.get<number>('REDIS_OTP_EXPIRY', 300); // 5 phút mặc định
+      const expiresAt = new Date(Date.now() + expirySeconds * 1000);
 
-      // Cập nhật OTP và thời gian hết hạn trong DB
-      await this.usersService.updateOTP(user._id.toString(), secret, otp, expiresAt);
+      // Lưu OTP vào Redis thay vì database
+      await this.redisService.saveOTP(user._id.toString(), secret, otp);
 
       // Trả về OTP và thời gian hết hạn để gửi qua email hoặc giao diện
       return { otp, expiresAt };
     } catch (error) {
-      throw new Error(error)
+      console.error('Error updating OTP:', error);
       throw new InternalServerErrorException('Không thể cập nhật OTP. Vui lòng thử lại.');
     }
   }
   // Modified to work with email instead of just ID
   // async sendOTP(idOrEmail: string): Promise<void> {
   //   let user;
-    
+
   //   // Check if the input is an email
   //   if (idOrEmail.includes('@')) {
   //     user = await this.usersService.findByEmail(idOrEmail);
@@ -151,9 +156,9 @@ export class AuthService {
   //       throw new BadRequestException('User không tồn tại');
   //     }
   //   }
-    
+
   //   const { otp } = await this.updateOTP(user._id.toString());
-    
+
   //   try {
   //     const resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
   //     const template = await fs.promises.readFile('src/mail/templates/register.hbs', 'utf8');
@@ -203,11 +208,11 @@ export class AuthService {
   async resetPassword(id: string, otp: string, newPassword: string): Promise<{ message: string }> {
     // Verify OTP first
     const isValid = await this.verifyOTP(id, otp);
-    
+
     if (!isValid) {
       throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
     }
-    
+
     // Hash the new password
     const hashedPassword = await hashPasswordHelper(newPassword);
     const user = await this.usersService.findBy_id(id);
@@ -221,26 +226,33 @@ export class AuthService {
       otpExpiresAt: new Date(),
       accountType: user?.accountType || 'LOCAL',
     });
-    
+
     return { message: 'Mật khẩu đã được cập nhật thành công' };
   }
 
   async verifyOTP(id: string, otp: string): Promise<boolean> {
     const user = await this.usersService.findBy_id(id);
-    if (!user || !user.otpSecret) throw new BadRequestException('OTP không hợp lệ hoặc user không tồn tại');
+    if (!user) throw new BadRequestException('User không tồn tại');
 
-    authenticator.options = { digits: 6, step: 300 }; // Cấu hình lại để kiểm tra
-    const isValid = authenticator.check(otp, user.otpSecret); // Kiểm tra mã OTP với secret
-    if (!isValid) throw new BadRequestException('Mã OTP không hợp lệ');
-
-    // Kiểm tra thời gian hết hạn
-    if (new Date() > user.otpExpiresAt) {
-      throw new BadRequestException('Mã OTP đã hết hạn');
+    // Lấy thông tin OTP từ Redis
+    const otpData = await this.redisService.getOTP(id);
+    if (!otpData || !otpData.secret) {
+      throw new BadRequestException('OTP không tồn tại hoặc đã hết hạn');
     }
 
-    // Kích hoạt tài khoản và xóa OTP sau khi xác thực
+    // Cấu hình và kiểm tra OTP
+    authenticator.options = { digits: 6, step: 300 };
+    const isValid = authenticator.check(otp, otpData.secret);
+    if (!isValid) {
+      throw new BadRequestException('Mã OTP không hợp lệ');
+    }
+
+    // Kích hoạt tài khoản
     await this.usersService.updateIsActive(user._id.toString(), true);
-    await this.usersService.clearOTP(user._id.toString()); // Xóa secret và OTP sau khi xác thực
+
+    // Xóa OTP khỏi Redis sau khi xác thực thành công
+    await this.redisService.deleteOTP(id);
+
     return true;
   }
 
@@ -308,7 +320,7 @@ export class AuthService {
     if (!user) {
       throw new BadRequestException('User not found');
     }
-    
+
     return this.usersService.update({
       _id: userId,
       name: user.name,
@@ -323,7 +335,7 @@ export class AuthService {
   // Modified sendOTP to handle forgot password
   async sendOTP(idOrEmail: string, isPasswordReset: boolean = false): Promise<void> {
     let user;
-    
+
     // Check if the input is an email
     if (idOrEmail.includes('@')) {
       user = await this.usersService.findByEmail(idOrEmail);
@@ -337,28 +349,28 @@ export class AuthService {
         throw new BadRequestException('User không tồn tại');
       }
     }
-    
+
     const { otp } = await this.updateOTP(user._id.toString());
-    
+
     try {
       const resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
-      
+
       // Choose template based on whether this is for password reset or account activation
-      const templatePath = isPasswordReset 
-        ? 'src/mail/templates/forgot-password.hbs' 
+      const templatePath = isPasswordReset
+        ? 'src/mail/templates/forgot-password.hbs'
         : 'src/mail/templates/register.hbs';
-      
+
       const template = await fs.promises.readFile(templatePath, 'utf8');
       const compiledTemplate = handlebars.compile(template);
       const html = compiledTemplate({
         name: user?.name ?? user?.email,
         activationCode: otp
       });
-      
-      const subject = isPasswordReset 
-        ? 'Đặt lại mật khẩu - EduForge' 
+
+      const subject = isPasswordReset
+        ? 'Đặt lại mật khẩu - EduForge'
         : 'Kích hoạt tài khoản - EduForge';
-      
+
       const { data, error } = await resend.emails.send({
         from: 'EduForge<auth@eduforge.io.vn>',
         to: user?.email ? [user.email] : [],
@@ -389,7 +401,7 @@ export class AuthService {
     try {
       // Send OTP to user's email with password reset flag
       await this.sendOTP(email, true);
-      return { 
+      return {
         message: 'Mã OTP đã được gửi đến email của bạn',
         // Don't return user ID for security reasons
       };
@@ -400,39 +412,40 @@ export class AuthService {
   }
   async resetPasswordWithOTP(id: string, otp: string, newPassword: string): Promise<{ message: string }> {
     const user = await this.usersService.findBy_id(id);
-    if (!user || !user.otpSecret) {
-      throw new BadRequestException('OTP không hợp lệ hoặc user không tồn tại');
+    if (!user) {
+      throw new BadRequestException('User không tồn tại');
     }
 
-    // Verify OTP
+    // Lấy thông tin OTP từ Redis
+    const otpData = await this.redisService.getOTP(id);
+    if (!otpData || !otpData.secret) {
+      throw new BadRequestException('OTP không tồn tại hoặc đã hết hạn');
+    }
+
+    // Xác thực OTP
     authenticator.options = { digits: 6, step: 300 };
-    const isValid = authenticator.check(otp, user.otpSecret);
+    const isValid = authenticator.check(otp, otpData.secret);
     if (!isValid) {
       throw new BadRequestException('Mã OTP không hợp lệ');
     }
 
-    // Check expiration
-    if (new Date() > user.otpExpiresAt) {
-      throw new BadRequestException('Mã OTP đã hết hạn');
-    }
-
-    // Hash the new password
+    // Hash mật khẩu mới
     const hashedPassword = await hashPasswordHelper(newPassword);
-    
-    // Update user's password and clear OTP
+
+    // Cập nhật mật khẩu của người dùng
     await this.usersService.update({
       _id: id,
       name: user.name,
       email: user.email,
       password: hashedPassword,
       accountType: user.accountType || 'LOCAL',
-      otp: user.otp,
-      otpExpiresAt: user.otpExpiresAt,
+      otp: '',
+      otpExpiresAt: new Date(),
     });
-    
-    // Clear OTP after successful password reset
-    await this.usersService.clearOTP(id);
-    
+
+    // Xóa OTP khỏi Redis sau khi đổi mật khẩu thành công
+    await this.redisService.deleteOTP(id);
+
     return { message: 'Mật khẩu đã được cập nhật thành công' };
   }
 }

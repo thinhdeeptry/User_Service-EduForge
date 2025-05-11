@@ -10,7 +10,8 @@ import { JwtStrategy } from './passport/jwt.strategy';
 import { GoogleStrategy } from './passport/google.strategy';
 import { FacebookStrategy } from './passport/facebook.strategy';
 import { RefreshTokenStrategy } from './passport/refresh-token.strategy';
-import { RedisModule } from '@nestjs-modules/ioredis'; // Updated import
+// Redis module is imported from src/redis/redis.module
+import { RedisModule } from 'src/redis/redis.module'; // Custom Redis service module
 import { APP_GUARD } from '@nestjs/core';
 import { RolesGuard } from 'src/auth/RolesGuard';
 
@@ -18,6 +19,7 @@ import { RolesGuard } from 'src/auth/RolesGuard';
   imports: [
     UsersModule,
     PassportModule,
+    RedisModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -28,18 +30,6 @@ import { RolesGuard } from 'src/auth/RolesGuard';
       }),
       inject: [ConfigService],
     }),
-    // RedisModule.forRootAsync({
-    //   imports: [ConfigModule],
-    //   useFactory: (configService: ConfigService) => ({
-    //     config: {
-    //       host: configService.get('REDIS_HOST', 'localhost'),
-    //       port: configService.get('REDIS_PORT', 6379),
-    //       password: configService.get('REDIS_PASSWORD', ''),
-    //       db: configService.get('REDIS_DB', 0),
-    //     },
-    //   }),
-    //   inject: [ConfigService],
-    // }),
   ],
   controllers: [AuthController],
   providers: [
