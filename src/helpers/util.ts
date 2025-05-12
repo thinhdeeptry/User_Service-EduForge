@@ -8,7 +8,10 @@ export const hashPasswordHelper = async (plainPassword: string) => {
         console.error(err);
     }
 }
-export const comparePasswordHelper = async (plainPassword: string, hashPassword: string): Promise<boolean> => {
+export const comparePasswordHelper = async (plainPassword: string, hashPassword: string, accountType): Promise<boolean> => {
+    if(!hashPassword || typeof hashPassword !== 'string' && accountType!= 'LOCAL') {
+        return false;   
+    }
     if (!plainPassword || typeof plainPassword !== 'string') {
         throw new Error('Mật khẩu phải là một chuỗi không rỗng');
     }
