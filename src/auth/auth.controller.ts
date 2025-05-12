@@ -16,6 +16,7 @@ import { FacebookAuthGuard } from './passport/facebook-auth.guard';
 import { RefreshTokenGuard } from './passport/refresh-token-auth.guard';
 import { Response } from 'express';
 import { hashPasswordHelper } from 'src/helpers/util';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -74,7 +75,7 @@ export class AuthController {
   //   return this.authService.refreshToken(refreshToken);
   // }
   // @UseGuards(JwtAuthGuard)
-  @Post('register')
+  @Post('register') 
   @Public()
   register(@Body() registerDto: CreateAuthDto) {
     return this.authService.handleRegister(registerDto);
@@ -105,6 +106,7 @@ export class AuthController {
   //   console.log({ data });
   //   return { message: 'Email sent successfully' };
   // }
+
   @Post('verify-otp')
   @Public()
   async verifyOTP(@Body() body: { id: string; otp: string }) {
@@ -183,6 +185,7 @@ export class AuthController {
       console.log("socialUser: ",socialUser);
       // Gọi service để xử lý đăng nhập xã hội
       const result = await this.authService.socialLogin(socialUser);
+      console.log("result: ",result);
       return result;
     } catch (error) {
       console.error('Google token login error:', error);
@@ -253,5 +256,78 @@ export class AuthController {
     
     // Reset password with OTP verification
     return this.authService.resetPasswordWithOTP(user._id.toString(), otp, newPassword);
+  }
+  
+@Patch('profile')
+@UseGuards(JwtAuthGuard)
+async updateProfile(
+  @Request() req,
+  @Body() updateProfileDto: {
+    name?: string;
+    phone?: string;
+    address?: string;
+    image?: string;
+  }
+) {
+  const userId = req.user._id;
+  const user = await this.authService.getUserById(userId);
+  
+  if (!user) {
+    throw new BadRequestException('Người dùng không tồn tại');
+  }
+  
+  // Update user profile
+  await this.authService.updateUserProfile(userId, updateProfileDto);
+  
+  // Return updated user
+  const updatedUser = await this.authService.getUserById(userId);
+  return {
+    message: 'Cập nhật thông tin cá nhân thành công',
+    user: updatedUser
+  };
+}
+
+// Add this endpoint for avatar upload
+@Post('profile/avatar')
+@UseGuards(JwtAuthGuard)
+async updateAvatar(
+  @Request() req,
+  @Body() body: { imageUrl: string }
+) {
+  const userId = req.user._id;
+  const user = await this.authService.getUserById(userId);
+  
+  if (!user) {
+    throw new BadRequestException('Người dùng không tồn tại');
+  }
+  
+  if (!body.imageUrl) {
+    throw new BadRequestException('URL ảnh đại diện không được để trống');
+  }
+  
+  // Update user avatar
+  await this.authService.updateUserProfile(userId, { image: body.imageUrl });
+  
+  // Return updated user
+  const updatedUser = await this.authService.getUserById(userId);
+  return {
+    message: 'Cập nhật ảnh đại diện thành công',
+    user: updatedUser
+  };
+}
+@Get('profile')
+  @UseGuards(JwtAuthGuard)
+  async getProfile(@Request() req) {
+    const userId = req.user._id;
+    const user = await this.authService.getUserById(userId);
+    
+    if (!user) {
+      throw new BadRequestException('Người dùng không tồn tại');
+    }
+    
+    return {
+      message: 'Lấy thông tin cá nhân thành công',
+      user: user
+    };
   }
 }

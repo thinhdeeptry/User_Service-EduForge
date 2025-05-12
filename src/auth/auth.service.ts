@@ -11,6 +11,8 @@ import { Resend } from 'resend';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/modules/users/schemas/user.schema';
 import { RedisService } from 'src/redis/redis.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateUserDto } from 'src/modules/users/dto/update-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -29,7 +31,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException("Email hoặc password không hợp lệ");
     }
-    const isValidPassword = await comparePasswordHelper(pass, user.password);
+    const isValidPassword = await comparePasswordHelper(pass, user.password, user.accountType);
     if (!isValidPassword) {
       throw new UnauthorizedException("Email hoặc password không hợp lệ");
     }
@@ -44,6 +46,7 @@ export class AuthService {
   async login(user: any) {
     const jwtIssuer = this.configService.get<string>('JWT_ISSUER');
     console.log("check iss>>> ", jwtIssuer);
+    console.log("check user   >>> ", user);
     const payload = { username: user.email, sub: user._id, role: user.role, iss: jwtIssuer };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, {
@@ -60,7 +63,7 @@ export class AuthService {
         address: user.adress,
         role: user.role,
         accountType: user.accountType,
-        createAt: user.createAt
+        createdAt: user.createdAt
       },
       accessToken: accessToken,
       refreshToken: refreshToken
@@ -262,8 +265,29 @@ export class AuthService {
       let user = await this.usersService.findByEmail(socialUser.email);
       console.log("check user>>> ", user);
       if (user) {
+        //nếu user tồn tại nhưng chưa có image thì update image từ socialUser
+        if (!user.image && socialUser.image) {
+          // Convert Mongoose document to plain object before updating
+          const userObj = user.toObject ? user.toObject() : user;
+          await this.usersService.update({
+            _id: userObj._id.toString(),
+            name: userObj.name,
+            email: userObj.email,
+            image: socialUser.image,
+            password: userObj.password,
+            accountType: userObj.accountType,
+            isActive: userObj.isActive,
+            otpExpiresAt: user.otpExpiresAt,
+            otp: user.otp || '',
+            providerId: socialUser.providerId,
+            // Remove role property since it's not in UpdateUserDto
+          });
+          
+          // Refresh user data after update
+          user = await this.usersService.findByEmail(socialUser.email);
+        }
         // If user exists but with different login method (LOCAL)
-        if (user.accountType === 'LOCAL') {
+        if (user?.accountType === 'LOCAL') {
           // Update user to link social account
           await this.usersService.update({
             _id: user._id.toString(),
@@ -278,7 +302,7 @@ export class AuthService {
             accountType: "GOOGLE", // Update account type to match social provider
             // Keep the existing account type to maintain password login capability
           });
-        } else if (user.accountType !== socialUser.provider) {
+        } else if (user?.accountType !== socialUser.provider) {
           // User exists but with a different social provider
           // We'll just log them in with the existing account
           // You could also update the account to link multiple providers if desired
@@ -291,12 +315,13 @@ export class AuthService {
           image: socialUser.image,
           accountType: socialUser.provider,
           providerId: socialUser.providerId,
+          createdAt: new Date(),
           isActive: true, // Social login users are automatically activated
         });
-
+        console.log("check newUser>>> ", newUser);
         user = await this.usersService.findBy_id(newUser._id.toString());
       }
-
+      console.log("check user in login gg>>> ", user);
       // Generate JWT token and return user info
       return this.login(user);
     } catch (error) {
@@ -447,5 +472,34 @@ export class AuthService {
     await this.redisService.deleteOTP(id);
 
     return { message: 'Mật khẩu đã được cập nhật thành công' };
+  }
+
+  async updateUserProfile(userId: string, profileData: {
+    name?: string;
+    phone?: string;
+    address?: string;
+    image?: string;
+  }) {
+    const user = await this.usersService.findBy_id(userId);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+  
+    // Create update object with only the fields that are provided
+    const updateData: UpdateUserDto = {
+      _id: userId,
+      name: profileData.name !== undefined ? profileData.name : user.name,
+      email: user.email,
+      password: user.password,
+      phone: profileData.phone !== undefined ? profileData.phone : user.phone,
+      address: profileData.address !== undefined ? profileData.address : user.address,
+      image: profileData.image !== undefined ? profileData.image : user.image,
+      accountType: user.accountType || 'LOCAL',
+      otp: user.otp || '',
+      otpExpiresAt: user.otpExpiresAt,
+      isActive: user.isActive
+    };
+  
+    return this.usersService.update(updateData);
   }
 }
