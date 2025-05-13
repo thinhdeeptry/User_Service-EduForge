@@ -8,15 +8,17 @@ import { RedisModule as IoRedisModule, RedisModuleOptions } from '@nestjs-module
     ConfigModule,
     IoRedisModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService): Promise<RedisModuleOptions> => ({
-        type: 'single',
-        options: {
-          host: configService.get('REDIS_HOST', 'localhost'),
-          port: configService.get('REDIS_PORT', 6379),
-          password: configService.get('REDIS_PASSWORD', ''),
-          db: configService.get('REDIS_DB', 0),
-        }
-      }),
+      useFactory: async (configService: ConfigService): Promise<RedisModuleOptions> => {
+        return {
+          type: 'single',
+          options: {
+            host: configService.get('REDIS_HOST', 'redis'),
+            port: configService.get('REDIS_PORT', 6379),
+            password: configService.get('REDIS_PASSWORD', '123456'),
+            db: configService.get('REDIS_DB', 0),
+          }
+        };
+      },
       inject: [ConfigService],
     }),
   ],

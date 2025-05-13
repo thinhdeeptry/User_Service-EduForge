@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   mongodb:
     image: mongo:5.0.15
@@ -8,6 +10,14 @@ services:
       - 27017:27017
     volumes:
       - mongodb_data_container:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
 
   redis:
     image: redis:7-alpine
@@ -15,23 +25,45 @@ services:
       - 6379:6379
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass 123456  # Thêm mật khẩu (tùy chọn)
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "123456", "ping"]  # Sử dụng mật khẩu nếu có
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    environment:
+      - REDIS_PASSWORD=123456
 
   user-service:
     build:
       context: .
       dockerfile: Dockerfile
-    ##build: .  # Build from local Dockerfile instead of using image
     container_name: user-service
     ports:
       - 3001:3001
     env_file:
-        - ./.env
+      - ./.env
+    environment:
+      - REDIS_HOST=redis  # Dùng tên service thay vì 127.0.0.1
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=123456  # Nếu Redis có mật khẩu
     depends_on:
-      - mongodb
-      - redis
-volumes:
-    mongodb_data_container:
-    redis_data:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
 
-    # docker compose -p mongodb_user-service_edu-force up -d
+volumes:
+  mongodb_data_container:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
+
+# docker compose -p mongodb_user-service_edu-force up -d
