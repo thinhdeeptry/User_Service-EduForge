@@ -7,6 +7,7 @@ import { RolesGuard } from 'src/auth/RolesGuard';
 import { Roles } from 'src/decorator/roles.decorator';
 import { FindAllUsersDto } from './dto/find-all-users.dto';
 import { ApiKey } from 'src/decorator/api-key.decorator';
+import { Public } from 'src/decorator/customAnotation';
 
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -34,6 +35,7 @@ export class DashboardController {
     return this.dashboardService.findOne(id);
   }
   @Get('internal/user/:id')
+  @Public()
   @ApiKey() // Sử dụng API key thay vì JWT để xác thực giữa các service
   getUserForInternalService(@Param('id') id: string, @Headers('service-name') serviceName: string) {
     // Log để theo dõi service nào đang gọi
