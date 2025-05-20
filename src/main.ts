@@ -27,7 +27,7 @@ async function bootstrap() {
     // origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'x-api-key', 'x-service-name']
   });
   await app.listen(port);
 }
