@@ -23,7 +23,7 @@ async function bootstrap() {
   });
   //exclude: thay đổi đường dẫn mặc định của api
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: ['http://localhost:3000', 'https://eduforge.io.vn'],
     // origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
