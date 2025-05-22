@@ -57,4 +57,13 @@ export class DashboardController {
   remove(@Param('id') id: string) {
     return this.dashboardService.remove(id);
   }
+  @Post(':id/change-password')
+  @Roles('ADMIN')
+  @UsePipes(new ValidationPipe({ transform: true }))
+  changeUserPassword(
+    @Param('id') id: string, 
+    @Body() changePasswordDto: { currentPassword: string; newPassword: string }
+  ) {
+    return this.dashboardService.changeUserPassword(id, changePasswordDto);
+  }
 }

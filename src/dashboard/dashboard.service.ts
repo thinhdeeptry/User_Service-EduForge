@@ -4,7 +4,8 @@ import { UpdateDashboardDto } from './dto/update-dashboard.dto';
 import { UsersService } from 'src/modules/users/users.service';
 import { FindAllUsersDto } from './dto/find-all-users.dto';
 import { UpdateUserDto } from 'src/modules/users/dto/update-user.dto';
-
+import * as bcrypt from 'bcrypt';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 @Injectable()
 export class DashboardService {
   constructor(
@@ -118,5 +119,48 @@ export class DashboardService {
           isActive: user.isActive
         };
     }
+  }
+
+  async changeUserPassword(
+    id: string, 
+    changePasswordDto: { currentPassword: string; newPassword: string }
+  ) {
+    const user = await this.usersService.findBy_id(id);
+    
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    // For admin override (when admin is changing a user's password)
+    const isAdminOverride = changePasswordDto.currentPassword === 'adminOverride';
+    
+    if (!isAdminOverride) {
+      // Verify current password if not admin override
+      const isPasswordValid = await bcrypt.compare(
+        changePasswordDto.currentPassword,
+        user.password
+      );
+      
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+    }
+
+    // Validate new password
+    if (changePasswordDto.newPassword.length < 6) {
+      throw new BadRequestException('New password must be at least 6 characters long');
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, salt);
+    
+    // Update the user's password
+    user.password = hashedPassword;
+    await user.save();
+    
+    return {
+      message: 'Password changed successfully',
+    };
   }
 }
